@@ -1,0 +1,201 @@
+module washing_machine(clk,reset, door_close, start, filled, detergent_added, cycle_timeout, drained, spin_timeout,door_lock, motor_on, fill_value_on, drain_value_on, done, soap_wash, water_wash,an,ca);
+input clk;
+reg clk1=0;
+integer i=0;
+output reg [7:0]ca,an;
+input reset, door_close, start, filled, detergent_added, cycle_timeout, drained, spin_timeout,water_wash;
+output reg door_lock, motor_on, fill_value_on, drain_value_on, done, soap_wash;
+always@(posedge clk)
+begin
+if(i==50000000)
+begin
+clk1=~clk1;
+i<=0;
+end
+else
+i<=i+1;
+end
+initial
+begin
+an<=8'b11111011;
+end
+//defining the states
+parameter check_door = 3'b000;
+parameter fill_water = 3'b001;
+parameter add_detergent = 3'b010;
+parameter cycle = 3'b011;
+parameter drain_water = 3'b100;
+parameter spin = 3'b101;
+
+reg[2:0] current_state, next_state;
+always@(current_state or start or door_close or filled or detergent_added or drained or cycle_timeout or spin_timeout)
+begin
+case(current_state)
+check_door:
+begin
+if(start==1 && door_close==1)
+begin
+next_state = fill_water;
+motor_on = 0;
+fill_value_on = 0;
+drain_value_on = 0;
+door_lock = 1;
+soap_wash = 0;
+done = 0;
+end
+else
+begin
+next_state = check_door;
+motor_on = 0;
+fill_value_on = 0;
+drain_value_on = 0;
+door_lock = 0;
+soap_wash = 0;
+done = 0;
+end
+end
+fill_water:
+begin
+if (filled==1)
+begin
+if(soap_wash == 0)
+begin
+next_state = add_detergent;
+motor_on = 0;
+fill_value_on = 0;
+drain_value_on = 0;
+door_lock = 1;
+soap_wash = 1;
+done = 0;
+end
+end
+else
+begin
+next_state = fill_water;
+motor_on = 0;
+fill_value_on = 1;
+drain_value_on = 0;
+door_lock = 1;
+done = 0;
+end
+end
+add_detergent:
+begin
+if(detergent_added==1)
+begin
+next_state = cycle;
+motor_on = 0;
+fill_value_on = 0;
+drain_value_on = 0;
+door_lock = 1;
+soap_wash = 1;
+done = 0;
+end
+else
+begin
+next_state = add_detergent;
+motor_on = 0;
+fill_value_on = 0;
+drain_value_on = 0;
+door_lock = 1;
+soap_wash = 1;
+done = 0;
+end
+end
+cycle:
+begin
+if(cycle_timeout == 1)
+begin
+next_state = drain_water;
+motor_on = 0;
+fill_value_on = 0;
+drain_value_on = 0;
+door_lock = 1;
+done = 0;
+end
+else
+begin
+next_state = cycle;
+motor_on = 1;
+fill_value_on = 0;
+drain_value_on = 0;
+door_lock = 1;
+done = 0;
+end
+end
+drain_water:
+begin
+if(drained==1)
+begin
+if(water_wash==1)
+begin
+next_state = spin;
+motor_on = 0;
+fill_value_on = 0;
+drain_value_on = 0;
+door_lock = 1;
+soap_wash = 1;
+done = 0;
+end
+else
+begin
+next_state = drain_water;
+motor_on = 0;
+fill_value_on = 0;
+drain_value_on = 0;
+door_lock = 1;
+soap_wash = 1;
+done = 0;
+end
+end
+end
+spin:
+begin
+if(spin_timeout==1)
+begin
+next_state = check_door;
+motor_on = 0;
+fill_value_on = 0;
+drain_value_on = 0;
+door_lock = 1;
+soap_wash = 1;
+done = 1;
+end
+else
+begin
+next_state = spin;
+motor_on = 0;
+fill_value_on = 0;
+drain_value_on = 1;
+door_lock = 1;
+soap_wash = 1;
+done = 0;
+end
+end
+endcase
+end
+
+always@(posedge clk or negedge reset)
+begin
+if(!reset)
+begin
+current_state<=3'b000;
+end
+else
+begin
+current_state<=next_state;
+end
+end
+always@(posedge clk1)
+begin
+case(next_state)
+3'b000:ca<=8'b00000011;
+3'b001:ca<=8'b10011111;
+3'b010:ca<=8'b00100101;
+3'b011:ca<=8'b00001101;
+3'b100:ca<=8'b10011001;
+3'b101:ca<=8'b01001001;
+default:ca<=8'b11111111;
+endcase
+end
+endmodule
